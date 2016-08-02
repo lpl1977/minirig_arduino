@@ -48,14 +48,15 @@
 #define WRITE_PELLET_ATTEMPTS 21
 #define WRITE_RETRIEVAL_DELAYTIME 22
 #define DISPENSE_PELLET 30
+#define WRITE_CHECK_CONNECTION 99
 
 /*
    variables for tracking pellet dispensing
 */
 long pelletDispenseAttemptedTime = 0;
 volatile long pelletDetectedTime = 0;
-const int maxDispenseAttempts = 12;
-volatile int pelletDispenseAttemptCount = 0;
+const long maxDispenseAttempts = 12;
+long pelletDispenseAttemptCount = 0;
 const long maxDispenseWaitTime = 300;
 volatile boolean pelletDispenseAttempted = false;
 volatile boolean pelletDetected = false;
@@ -70,7 +71,7 @@ volatile boolean rewardRetrieved = false;
 /*
    variables for controlling execution
 */
-int command;
+int currentCommand;
 boolean readyForNextCommand = true;
 
 
@@ -105,7 +106,7 @@ void loop() {
 
   //  Start by checking serial buffer for new data if we are ready for a new serial command
   if (readyForNextCommand && Serial.available() > 0) {
-    command = (int) Serial.read();
+    currentCommand = (int) Serial.read();
     readyForNextCommand = false;
   }
 
@@ -113,7 +114,7 @@ void loop() {
   if (!readyForNextCommand) {
 
     //  Switch operation based on command and set to ready for next command once complete
-    switch (command) {
+    switch (currentCommand) {
 
       //  Sample joystick position and write to serial
       case (SAMPLE_JOYSTICK): {
@@ -142,12 +143,14 @@ void loop() {
           break;
         }
 
-      // Write number of pellet dispense attempts to serial
+      // Write number of pellet dispense attempts to serial; if no pellet dropped and still attempting return 0
       case (WRITE_PELLET_ATTEMPTS): {
           if (pelletDetected || dispensePelletFailed) {
             sendBytes(pelletDispenseAttemptCount);
-            readyForNextCommand = true;
+          } else {
+            sendBytes(0);
           }
+          readyForNextCommand = true;
           break;
         }
 
@@ -169,6 +172,13 @@ void loop() {
           dispensePelletFailed = false;
           rewardRetrieved = false;
           dispensePellet();
+          readyForNextCommand = true;
+          break;
+        }
+
+      // Check connection
+      case (WRITE_CHECK_CONNECTION): {
+          sendBytes(1);
           readyForNextCommand = true;
           break;
         }
@@ -210,9 +220,7 @@ void dispensePellet() {
   pelletDispenseAttemptedTime =  millis();
 }
 
-// Interrupt Service Routines
-
-/*
+/* INTERRUPT SERVICE ROUTINE
    detectPelletDispense
 
    Void function that caputres time at which pellet detected on descent
@@ -225,7 +233,7 @@ void detectPelletDispense() {
   pelletDispenseAttempted = false;
 }
 
-/*
+/*  INTERRUPT SERVICE ROUTINE
    detectRewardRetrieval
 
    Void function that captures time at which monkey retrieves reward
