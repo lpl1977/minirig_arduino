@@ -19,9 +19,11 @@
    Analog Input Pins
    A0--Joystick
    A1--Infrared range finder
+   A2--check battery voltage
 */
 #define JOYSTICK_ANALOG_INPUT_PIN 0
 #define RANGEFINDER_ANALOG_INPUT_PIN 1
+#define BATTERY_VOLTAGE_INPUT_PIN 2
 
 /*
    Digital Input Pins
@@ -33,9 +35,11 @@
 
 /*
    Digital Output Pins
+   D11--Check battery voltage
    D12--Dispense pellet
    D13--Debug pin
 */
+#define SAMPLE_BATTERY_VOLTAGE_OUTPUT_PIN 11
 #define PELLET_DISPENSE_DIGITAL_OUTPUT_PIN 12
 #define DEBUG_DIGITAL_OUTPUT_PIN 13
 
@@ -44,6 +48,7 @@
 */
 #define SAMPLE_JOYSTICK 10
 #define SAMPLE_RANGEFINDER 11
+#define SAMPLE_BATTERY_VOLTAGE 12
 #define WRITE_PELLET_DELAYTIME 20
 #define WRITE_PELLET_ATTEMPTS 21
 #define WRITE_RETRIEVAL_DELAYTIME 22
@@ -74,8 +79,6 @@ volatile boolean rewardRetrieved = false;
 int currentCommand;
 boolean readyForNextCommand = true;
 
-
-
 /*
    setup
 
@@ -95,6 +98,9 @@ void setup() {
   //  Set digital output pin
   pinMode(PELLET_DISPENSE_DIGITAL_OUTPUT_PIN, OUTPUT);
   digitalWrite(PELLET_DISPENSE_DIGITAL_OUTPUT_PIN, LOW);
+
+  pinMode(SAMPLE_BATTERY_VOLTAGE_OUTPUT_PIN, OUTPUT);
+  digitalWrite(SAMPLE_BATTERY_VOLTAGE_OUTPUT_PIN, LOW);
 }
 
 /*
@@ -126,6 +132,15 @@ void loop() {
       //  Sample infrared range finder and write to serial
       case (SAMPLE_RANGEFINDER): {
           sendAnalog(RANGEFINDER_ANALOG_INPUT_PIN);
+          readyForNextCommand = true;
+          break;
+        }
+
+      //  Sample battery voltage
+      case (SAMPLE_BATTERY_VOLTAGE): {
+          digitalWrite(SAMPLE_BATTERY_VOLTAGE_OUTPUT_PIN, HIGH);
+          sendAnalog(BATTERY_VOLTAGE_INPUT_PIN);
+          digitalWrite(SAMPLE_BATTERY_VOLTAGE_OUTPUT_PIN, LOW);
           readyForNextCommand = true;
           break;
         }
